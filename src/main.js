@@ -1,28 +1,23 @@
 (function () {
   'use strict';
 
-  // Configuration matching the desired arc / creative carousel look.
+  // Configuration matching the original Swiper creativeEffect.
   const CONFIG = {
     loop: true,
     grabCursor: true,
     slidesPerView: 3,
-    limitProgress: 4,
+    limitProgress: 3,
     perspective: true,
-    speed: 600,
-    autoplay: {
-      delay: 3000,
-      disableOnInteraction: true,
-      pauseOnMouseEnter: true
-    },
+    speed: 500,
     creativeEffect: {
       prev: {
-        translate: ['-30%', '-22%', -120],
-        rotate: [0, 0, -16],
+        translate: ['-90%', '20%', -100],
+        rotate: [0, 0, -20],
         origin: 'bottom'
       },
       next: {
-        translate: ['30%', '-22%', -120],
-        rotate: [0, 0, 16],
+        translate: ['90%', '20%', -100],
+        rotate: [0, 0, 20],
         origin: 'bottom'
       }
     }
@@ -39,7 +34,6 @@
   let isDragging = false;
   let startX = 0;
   let dragOffset = 0;
-  let autoplayTimer = null;
 
   function parseTransformValue(value, index) {
     if (typeof value === 'string' && value.includes('%')) {
@@ -53,7 +47,7 @@
 
     if (absOffset === 0) {
       return {
-        transform: 'translate3d(-50%, 0, 0)',
+        transform: 'translate3d(-50%, -50%, 0)',
         zIndex: 10
       };
     }
@@ -66,7 +60,7 @@
     // The creative transform is then applied in the slide's local coordinate
     // system with transform-origin: bottom center.
     const transform = [
-      'translate3d(-50%, 0, 0)',
+      'translate3d(-50%, -50%, 0)',
       `translate3d(${translate[0]}%, ${translate[1]}%, ${translate[2]}px)`,
       `rotateX(${rotate[0]}deg) rotateY(${rotate[1]}deg) rotateZ(${rotate[2]}deg)`
     ].join(' ');
@@ -102,7 +96,7 @@
       // Hide slides that are beyond the configured limit.
       if (Math.abs(offset) > CONFIG.limitProgress) {
         slide.style.opacity = '0';
-        slide.style.transform = 'translate3d(-50%, 0, 0)';
+        slide.style.transform = 'translate3d(-50%, -50%, 0)';
         slide.style.pointerEvents = 'none';
         slide.style.zIndex = '0';
         return;
@@ -129,49 +123,18 @@
     goTo(activeIndex - 1);
   }
 
-  // Autoplay
-  function startAutoplay() {
-    if (!CONFIG.autoplay || !CONFIG.autoplay.delay) return;
-    stopAutoplay();
-    autoplayTimer = setInterval(() => {
-      if (!isDragging) next();
-    }, CONFIG.autoplay.delay);
-  }
-
-  function stopAutoplay() {
-    if (autoplayTimer) {
-      clearInterval(autoplayTimer);
-      autoplayTimer = null;
-    }
-  }
-
-  function resetAutoplay() {
-    if (!CONFIG.autoplay || !CONFIG.autoplay.delay) return;
-    if (CONFIG.autoplay.disableOnInteraction) {
-      stopAutoplay();
-    } else {
-      startAutoplay();
-    }
-  }
-
-  if (CONFIG.autoplay && CONFIG.autoplay.pauseOnMouseEnter) {
-    wrapper.addEventListener('mouseenter', stopAutoplay);
-    wrapper.addEventListener('mouseleave', startAutoplay);
-  }
-
   // Pointer / touch drag handling
   function onDragStart(clientX) {
     isDragging = true;
     startX = clientX;
     dragOffset = 0;
     slides.forEach((slide) => slide.classList.add('is-dragging'));
-    stopAutoplay();
   }
 
   function onDragMove(clientX) {
     if (!isDragging) return;
 
-    const slideWidth = slides[0].offsetWidth || 240;
+    const slideWidth = slides[0].offsetWidth || 368;
     const delta = clientX - startX;
     // A full slide-width drag moves the carousel by one position.
     dragOffset = -delta / slideWidth;
@@ -192,7 +155,6 @@
     }
 
     dragOffset = 0;
-    startAutoplay();
   }
 
   wrapper.addEventListener('pointerdown', (e) => {
@@ -242,29 +204,15 @@
   wrapper.addEventListener('touchend', onDragEnd);
   wrapper.addEventListener('touchcancel', onDragEnd);
 
-  nextBtn.addEventListener('click', () => {
-    next();
-    resetAutoplay();
-  });
-
-  prevBtn.addEventListener('click', () => {
-    prev();
-    resetAutoplay();
-  });
+  nextBtn.addEventListener('click', next);
+  prevBtn.addEventListener('click', prev);
 
   // Keyboard navigation
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight') {
-      next();
-      resetAutoplay();
-    }
-    if (e.key === 'ArrowLeft') {
-      prev();
-      resetAutoplay();
-    }
+    if (e.key === 'ArrowRight') next();
+    if (e.key === 'ArrowLeft') prev();
   });
 
   // Initial render
   goTo(activeIndex);
-  startAutoplay();
 })();
