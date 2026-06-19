@@ -8,7 +8,18 @@
     limitProgress: 4,
     angleStep: 15,   // degrees between each slide on the arc
     depthStep: 100,  // px to push side slides back in Z
-    maxRadius: 850   // px cap for the arc radius
+    maxRadius: 850,   // px cap for the arc radius
+
+    responsive: {
+      slides: {
+        0: 3,//how many slides to show above 0px
+        560: 4,//how many slides to show above 560px
+        768: 5,//how many slides to show above 768px
+        1036: 6,//how many slides to show above 1036px
+        1336: 7,//how many slides to show above 1336px
+      },
+
+    }
   };
 
   const wrapper = document.querySelector('.my-carousel__slides');
@@ -33,6 +44,27 @@
       track.clientWidth * 0.42,
       CONFIG.maxRadius
     );
+  }
+
+  function getResponsiveLimit() {
+    if (!CONFIG.responsive || !CONFIG.responsive.slides) {
+      return CONFIG.limitProgress;
+    }
+
+    const width = window.innerWidth;
+    const breakpoints = Object.keys(CONFIG.responsive.slides)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    let chosen = CONFIG.limitProgress;
+    for (const breakpoint of breakpoints) {
+      if (width >= breakpoint) {
+        chosen = CONFIG.responsive.slides[breakpoint];
+      }
+    }
+
+    // The responsive value is total visible slides; convert to "slides per side".
+    return Math.max(1, Math.floor((chosen - 1) / 2));
   }
 
   function buildTransform(offset) {
@@ -77,12 +109,13 @@
 
   function render(targetIndex, visualOffset) {
     const centerIndex = (targetIndex + slides.length) % slides.length;
+    const limit = getResponsiveLimit();
 
     slides.forEach((slide, i) => {
       let offset = getLoopOffset(i, centerIndex) + visualOffset;
 
       // Hide slides that are beyond the configured limit.
-      if (Math.abs(offset) > CONFIG.limitProgress) {
+      if (Math.abs(offset) > limit) {
         slide.style.opacity = '0';
         slide.style.transform = 'translate3d(-50%, 0, 0)';
         slide.style.pointerEvents = 'none';
