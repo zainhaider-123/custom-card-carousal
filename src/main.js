@@ -1,29 +1,18 @@
 (function () {
   'use strict';
 
-  // Configuration matching the original Swiper creativeEffect.
+  // Half-circle (arc) carousel configuration.
   const CONFIG = {
     loop: true,
     grabCursor: true,
-    slidesPerView: 3,
-    limitProgress: 3,
-    perspective: true,
-    speed: 500,
-    creativeEffect: {
-      prev: {
-        translate: ['-90%', '20%', -100],
-        rotate: [0, 0, -20],
-        origin: 'bottom'
-      },
-      next: {
-        translate: ['90%', '20%', -100],
-        rotate: [0, 0, 20],
-        origin: 'bottom'
-      }
-    }
+    limitProgress: 4,
+    angleStep: 15,   // degrees between each slide on the arc
+    depthStep: 100,  // px to push side slides back in Z
+    maxRadius: 850   // px cap for the arc radius
   };
 
   const wrapper = document.querySelector('.my-carousel__slides');
+  const track = document.querySelector('.my-carousel__track');
   const slides = Array.from(document.querySelectorAll('.my-carousel__slide'));
   const prevBtn = document.querySelector('.my-carousel__control--prev');
   const nextBtn = document.querySelector('.my-carousel__control--next');
@@ -35,39 +24,38 @@
   let startX = 0;
   let dragOffset = 0;
 
-  function parseTransformValue(value, index) {
-    if (typeof value === 'string' && value.includes('%')) {
-      return parseFloat(value) * index;
-    }
-    return value * index;
+  function getRadius() {
+    if (!track) return CONFIG.maxRadius;
+    // Fit the arc inside the track: center at the bottom middle,
+    // radius nearly the track height so the peak sits near the top.
+    return Math.min(
+      track.clientHeight * 0.92,
+      track.clientWidth * 0.42,
+      CONFIG.maxRadius
+    );
   }
 
   function buildTransform(offset) {
     const absOffset = Math.abs(offset);
+    const radius = getRadius();
+    const theta = offset * CONFIG.angleStep * (Math.PI / 180);
 
-    if (absOffset === 0) {
-      return {
-        transform: 'translate3d(-50%, -50%, 0)',
-        zIndex: 10
-      };
-    }
+    // Position each slide so its bottom sits on the upper half of a large
+    // circle centered below the track, then rotate it to point outward.
+    const x = Math.sin(theta) * radius;
+    const y = -Math.cos(theta) * radius;
+    const z = -absOffset * CONFIG.depthStep;
+    const rotateZ = offset * CONFIG.angleStep;
 
-    const side = offset < 0 ? CONFIG.creativeEffect.prev : CONFIG.creativeEffect.next;
-    const translate = side.translate.map((v) => parseTransformValue(v, absOffset));
-    const rotate = side.rotate.map((v) => parseTransformValue(v, absOffset));
-
-    // The base translate(-50%, -50%) centers the absolutely positioned slide.
-    // The creative transform is then applied in the slide's local coordinate
-    // system with transform-origin: bottom center.
     const transform = [
-      'translate3d(-50%, -50%, 0)',
-      `translate3d(${translate[0]}%, ${translate[1]}%, ${translate[2]}px)`,
-      `rotateX(${rotate[0]}deg) rotateY(${rotate[1]}deg) rotateZ(${rotate[2]}deg)`
+      'translate3d(-50%, 0, 0)',
+      `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, ${z}px)`,
+      `rotateZ(${rotateZ.toFixed(1)}deg)`
     ].join(' ');
 
     return {
       transform,
-      zIndex: 10 - absOffset
+      zIndex: 10 - Math.round(absOffset)
     };
   }
 
@@ -96,7 +84,7 @@
       // Hide slides that are beyond the configured limit.
       if (Math.abs(offset) > CONFIG.limitProgress) {
         slide.style.opacity = '0';
-        slide.style.transform = 'translate3d(-50%, -50%, 0)';
+        slide.style.transform = 'translate3d(-50%, 0, 0)';
         slide.style.pointerEvents = 'none';
         slide.style.zIndex = '0';
         return;
@@ -212,6 +200,9 @@
     if (e.key === 'ArrowRight') next();
     if (e.key === 'ArrowLeft') prev();
   });
+
+  // Recompute arc on resize
+  window.addEventListener('resize', () => render(activeIndex, 0));
 
   // Initial render
   goTo(activeIndex);
